@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include "settings.h"
 #include "Arduino.h"
 #include "mhz19.h"
 
@@ -12,9 +13,11 @@
 #define PIN_RX  D1
 #define PIN_TX  D2
 
-#define MQTT_HOST   "mqtt.rwqr.org"
-#define MQTT_PORT   1883
-#define MQTT_TOPIC  "rpiair"
+
+void callback(char* topic, byte* payload, unsigned int length) {
+  // handle message arrived
+  // Serial.println(payload);
+}
 
 SoftwareSerial sensor(PIN_RX, PIN_TX);
 WiFiManager wifiManager;
@@ -64,19 +67,23 @@ static bool read_temp_co2(int *co2, int *temp)
 
 static void mqtt_send(const char *topic, int value, const char *unit)
 {
+    Serial.println(mqttClient.connected());
     if (!mqttClient.connected()) {
         mqttClient.setServer(MQTT_HOST, MQTT_PORT);
-        mqttClient.connect(esp_id);
+        mqttClient.connect(esp_id, MQTT_USER, MQTT_PASSWORD);
     }
     if (mqttClient.connected()) {
         char string[64];
-        snprintf(string, sizeof(string), "%d %s", value, unit);
+        char full_topic[64];
+        //snprintf(string, sizeof(string), "%d %s", value, unit);
+        snprintf(string, sizeof(string), "%d", value);
+        snprintf(full_topic, sizeof(full_topic), "%s/%s/%s", topic, "mhz19", unit);
         Serial.print("Publishing ");
         Serial.print(string);
         Serial.print(" to ");
-        Serial.print(topic);
+        Serial.print(full_topic);
         Serial.print("...");
-        int result = mqttClient.publish(topic, string, true);
+        int result = mqttClient.publish(full_topic, string, true);
         Serial.println(result ? "OK" : "FAIL");
     }
 }
@@ -92,8 +99,8 @@ void setup()
 
     sensor.begin(9600);
 
-    //Serial.println("Starting WIFI manager ...");
-    //wifiManager.autoConnect("ESP-MHZ19");
+    Serial.println("Starting WIFI manager ...");
+    wifiManager.autoConnect("ESP-MHZ19");
 }
 
 void loop()
@@ -104,8 +111,8 @@ void loop()
         Serial.println(co2, DEC);
         Serial.print("TEMP:");
         Serial.println(temp, DEC);
-
-        //mqtt_send(MQTT_TOPIC, co2, "PPM");
+        mqtt_send(MQTT_TOPIC, co2, "co2");
+        mqtt_send(MQTT_TOPIC, temp, "temp");
     }
     delay(5000);
 }
