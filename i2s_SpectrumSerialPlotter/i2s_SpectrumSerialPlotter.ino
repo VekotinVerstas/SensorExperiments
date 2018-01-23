@@ -8,10 +8,10 @@
  * Arduino/Genuino Zero, MKRZero or MKR1000 board
  * ICS43432:
    * GND connected GND
-   * 3.3V connected 3.3V (Zero) or VCC (MKR1000, MKRZero)
-   * WS connected to pin 0 (Zero) or pin 3 (MKR1000, MKRZero)
-   * CLK connected to pin 1 (Zero) or pin 2 (MKR1000, MKRZero)
-   * SD connected to pin 9 (Zero) or pin A6 (MKR1000, MKRZero)
+   * 3.3V (3V) connected 3.3V (Zero) or VCC (MKR1000, MKRZero)
+   * WS (LRCL) connected to pin 0 (Zero) or pin 3 (MKR1000, MKRZero)
+   * CLK (BCLK) connected to pin 1 (Zero) or pin 2 (MKR1000, MKRZero)
+   * SD (DOUT) connected to pin 9 (Zero) or pin A6 (MKR1000, MKRZero)
 
  created 21 November 2016
  by Sandeep Mistry
