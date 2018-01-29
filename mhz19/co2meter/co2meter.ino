@@ -69,7 +69,7 @@ static void mqtt_send(const char *topic, int value, const char *unit)
 {
     Serial.println(mqttClient.connected());
     if (!mqttClient.connected()) {
-        mqttClient.setServer(MQTT_HOST, MQTT_PORT);
+        mqttClient.setServer(MQTT_SERVER, MQTT_PORT);
         mqttClient.connect(esp_id, MQTT_USER, MQTT_PASSWORD);
     }
     if (mqttClient.connected()) {
@@ -100,7 +100,7 @@ void setup()
     sensor.begin(9600);
 
     Serial.println("Starting WIFI manager ...");
-    wifiManager.autoConnect("ESP-MHZ19");
+    wifiManager.autoConnect("ESP-MHZ19", WIFI_PASSWORD);
 }
 
 void loop()
