@@ -15,63 +15,103 @@
 
  created 17 November 2016
  by Sandeep Mistry
+
+ Modified and added audio avarage non filered volume data sending via MQTT
+ by Aki Salminen 2018
  */
 
 #include <I2S.h>
+#include <WiFi101.h>
+#include <MQTTClient.h>
+#include "settings.h"
+
+WiFiClient wific;
+MQTTClient mqttc;
+
+unsigned long time=0;
+uint8_t vals=0;
+uint64_t avgval=0;
+uint8_t first=1;
+
+#define SAMPLES 512 // make it a power of two for best DMA performance
 
 void setup() {
-  // Open serial communications and wait for port to open:
-  // A baud rate of 115200 is used instead of 9600 for a faster data rate
-  // on non-native USB ports
   Serial.begin(115200);
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
   }
 
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   // start I2S at 16 kHz with 32-bits per sample
   if (!I2S.begin(I2S_PHILIPS_MODE, 16000, 32)) {
     Serial.println("Failed to initialize I2S!");
     while (1); // do nothing
   }
+  // MQTT
+  mqttc.begin(MQTT_SERVER, wific);
+  mqttc.onMessage(messageReceived);
+	mqttconnect();
 }
 
-#define SAMPLES 128 // make it a power of two for best DMA performance
+void mqttconnect() {
+  Serial.println("Waiting wifi");
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print(".");
+    delay(1000);
+  }
+  Serial.println("Connecting MQTT");
+  //(name, username, password)
+  while (!mqttc.connect("arduVUmeter", MQTT_USER, MQTT_PASSWORD)) {
+    Serial.print(".");
+    delay(1000);
+  }
+  Serial.println("\nconnected!");
+  // For incoming control messages
+  // mqttc.subscribe(MQTT_TOPIC);
+  // mqttc.unsubscribe(MQTT_TOPIC);
+}
 
 void loop() {
+  char buffer[8];
+  //Serial.print("Time: ");
   // read a bunch of samples:
-  int samples[SAMPLES];
+  int32_t samples[SAMPLES];
 
-  for (int i=0; i<SAMPLES; i++) {
-    int sample = 0; 
+  for (uint16_t i=0; i<SAMPLES; i++) {
+    int32_t sample = 0;
     while ((sample == 0) || (sample == -1) ) {
       sample = I2S.read();
     }
     // convert to 18 bit signed
-    sample >>= 14; 
+    sample >>= 14;
     samples[i] = sample;
   }
-
-  // ok we hvae the samples, get the mean (avg)
-  float meanval = 0;
-  for (int i=0; i<SAMPLES; i++) {
-    meanval += samples[i];
-  }
-  meanval /= SAMPLES;
-  //Serial.print("# average: " ); Serial.println(meanval);
-
-  // subtract it from all sapmles to get a 'normalized' output
-  for (int i=0; i<SAMPLES; i++) {
-    samples[i] -= meanval;
-    //Serial.println(samples[i]);
-  }
-
   // find the 'peak to peak' max
-  float maxsample, minsample;
-  minsample = 100000;
-  maxsample = -100000;
-  for (int i=0; i<SAMPLES; i++) {
+  int32_t maxsample=0, minsample=0;
+  for (uint16_t i=0; i<SAMPLES; i++) {
     minsample = min(minsample, samples[i]);
     maxsample = max(maxsample, samples[i]);
   }
-  Serial.println(maxsample - minsample);
+  Serial.println((long)(maxsample - minsample));
+  avgval+=(maxsample - minsample);
+  vals++;
+  if( millis()-time>1000 ) {
+    if(first) {
+      first=0;
+      Serial.println("Skip first data (unstable data).");
+    }
+    else{
+      Serial.print("Sending data to server: ");
+      itoa((avgval/vals),buffer,10);
+      mqttc.publish(MQTT_TOPIC, buffer );
+      Serial.println(buffer);
+    }
+    avgval=0;
+    vals=0;
+    time=millis();
+  }
+}
+
+void messageReceived(String &topic, String &payload) {
+  Serial.println("incoming: " + topic + " - " + payload);
 }
