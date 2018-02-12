@@ -22,18 +22,28 @@
 
 #include <I2S.h>
 #include <WiFi101.h>
-#include <MQTTClient.h>
+//#include <MQTTClient.h>
+#include <ArduinoSound.h>
 #include "settings.h"
 
 WiFiClient wific;
-MQTTClient mqttc;
+//MQTTClient mqttc;
 
 unsigned long time=0;
 uint8_t vals=0;
 uint64_t avgval=0;
 uint8_t first=1;
 
-#define SAMPLES 512 // make it a power of two for best DMA performance
+// sample rate for the input
+const int sampleRate = 41000;
+// size of the FFT to compute
+const int fftSize = 512;
+// size of the spectrum output, half of FFT size
+const int spectrumSize = fftSize / 2;
+// array to store spectrum output
+int spectrum[spectrumSize];
+// create an FFT analyzer to be used with the I2S input
+FFTAnalyzer fftAnalyzer(fftSize);
 
 void setup() {
   Serial.begin(115200);
@@ -43,16 +53,17 @@ void setup() {
 
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   // start I2S at 16 kHz with 32-bits per sample
-  if (!I2S.begin(I2S_PHILIPS_MODE, 16000, 32)) {
+  if (!I2S.begin(I2S_PHILIPS_MODE, 41000, 32)) {
     Serial.println("Failed to initialize I2S!");
     while (1); // do nothing
   }
+  //Serial.println("I2S initialized!");
   // MQTT
-  mqttc.begin(MQTT_SERVER, wific);
-  mqttc.onMessage(messageReceived);
-	mqttconnect();
+  //mqttc.begin(MQTT_SERVER, wific);
+  //mqttc.onMessage(messageReceived);
+	//mqttconnect();
 }
-
+/*
 void mqttconnect() {
   Serial.println("Waiting wifi");
   while (WiFi.status() != WL_CONNECTED) {
@@ -70,14 +81,14 @@ void mqttconnect() {
   // mqttc.subscribe(MQTT_TOPIC);
   // mqttc.unsubscribe(MQTT_TOPIC);
 }
-
+*/
 void loop() {
   char buffer[8];
-  //Serial.print("Time: ");
+  // Serial.print("Time: ");
   // read a bunch of samples:
-  int32_t samples[SAMPLES];
+  int32_t samples[fftSize];
 
-  for (uint16_t i=0; i<SAMPLES; i++) {
+  for (uint16_t i=0; i<fftSize; i++) {
     int32_t sample = 0;
     while ((sample == 0) || (sample == -1) ) {
       sample = I2S.read();
@@ -88,12 +99,11 @@ void loop() {
   }
   // find the 'peak to peak' max
   int32_t maxsample=0, minsample=0;
-  for (uint16_t i=0; i<SAMPLES; i++) {
+  for (uint16_t i=0; i<fftSize; i++) {
     minsample = min(minsample, samples[i]);
     maxsample = max(maxsample, samples[i]);
   }
-  Serial.println((long)(maxsample - minsample));
-  avgval+=(maxsample - minsample);
+  avgval+=(maxsample-minsample);
   vals++;
   if( millis()-time>1000 ) {
     if(first) {
@@ -103,8 +113,9 @@ void loop() {
     else{
       Serial.print("Sending data to server: ");
       itoa((avgval/vals),buffer,10);
-      mqttc.publish(MQTT_TOPIC, buffer );
+//      mqttc.publish(MQTT_TOPIC, buffer );
       Serial.println(buffer);
+      Serial.println((long)(maxsample - minsample));
     }
     avgval=0;
     vals=0;
