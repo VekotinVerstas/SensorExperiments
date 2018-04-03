@@ -95,8 +95,7 @@ void setup()
 //    sprintf(esp_id, "%08X", ESP.getChipId());
 //    Serial.print("ESP ID: ");
 //    Serial.println(esp_id);
-
-    sensor.begin(9600);
+      sensor.begin(9600, SERIAL_8N1, 14, 12);
 
 //    Serial.println("Starting WIFI manager ...");
 //    wifiManager.autoConnect("ESP-MHZ19", WIFI_PASSWORD);
