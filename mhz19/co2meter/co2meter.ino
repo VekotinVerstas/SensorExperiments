@@ -1,28 +1,27 @@
 #include <stdio.h>
 
 #include "settings.h"
-#include "Arduino.h"
+//#include "Arduino.h"
 #include "mhz19.h"
 
-#include "SoftwareSerial.h"
-
-#include <ESP8266WiFi.h>
-#include <WiFiManager.h>
+#include <WiFi.h>
+//#include <WiFiClient.h>
+//#include <ESPWebServer.h>
+#include <ESPmDNS.h>
+//#include <DNSServer.h>
+//#include <ESPWebServer.h>
+//#include <WiFiManager.h>
 #include <PubSubClient.h>
-
-#define PIN_RX  D1
-#define PIN_TX  D2
-
 
 void callback(char* topic, byte* payload, unsigned int length) {
   // handle message arrived
   // Serial.println(payload);
 }
 
-SoftwareSerial sensor(PIN_RX, PIN_TX);
-WiFiManager wifiManager;
-WiFiClient wifiClient;
-PubSubClient mqttClient(wifiClient);
+HardwareSerial sensor(1); //  rxPin = 9; txPin = 10;
+//WiFiManager wifiManager;
+//WiFiClient wifiClient;
+//PubSubClient mqttClient(wifiClient);
 
 static char esp_id[16];
 
@@ -64,7 +63,7 @@ static bool read_temp_co2(int *co2, int *temp)
     }
     return result;
 }
-
+/*
 static void mqtt_send(const char *topic, int value, const char *unit)
 {
     Serial.println(mqttClient.connected());
@@ -87,20 +86,20 @@ static void mqtt_send(const char *topic, int value, const char *unit)
         Serial.println(result ? "OK" : "FAIL");
     }
 }
-
+*/
 void setup()
 {
     Serial.begin(115200);
     Serial.println("MHZ19 ESP reader\n");
 
-    sprintf(esp_id, "%08X", ESP.getChipId());
-    Serial.print("ESP ID: ");
-    Serial.println(esp_id);
+//    sprintf(esp_id, "%08X", ESP.getChipId());
+//    Serial.print("ESP ID: ");
+//    Serial.println(esp_id);
 
     sensor.begin(9600);
 
-    Serial.println("Starting WIFI manager ...");
-    wifiManager.autoConnect("ESP-MHZ19", WIFI_PASSWORD);
+//    Serial.println("Starting WIFI manager ...");
+//    wifiManager.autoConnect("ESP-MHZ19", WIFI_PASSWORD);
 }
 
 void loop()
@@ -111,8 +110,8 @@ void loop()
         Serial.println(co2, DEC);
         Serial.print("TEMP:");
         Serial.println(temp, DEC);
-        mqtt_send(MQTT_TOPIC, co2, "co2");
-        mqtt_send(MQTT_TOPIC, temp, "temp");
+//        mqtt_send(MQTT_TOPIC, co2, "co2");
+//        mqtt_send(MQTT_TOPIC, temp, "temp");
     }
     delay(5000);
 }
